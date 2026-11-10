@@ -43,6 +43,7 @@ jobs:
           tar -C dist -czf "mdv-${version}-${GOOS}-${GOARCH}.tar.gz" mdv vendor
 
       - name: attest
+        if: ${{ !github.event.repository.private }}
         uses: actions/attest-build-provenance@v2
         with:
           subject-path: "mdv-*.tar.gz"
