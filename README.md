@@ -17,6 +17,12 @@ mdv notes.md
 mise use -g github:yumazak/mdv
 ```
 
+タグを打った直後は mise の `minimum_release_age`（既定24時間）で新リリースが隠れる。すぐ入れたいときは一度だけ:
+
+```
+mise use -g --minimum-release-age 0s github:yumazak/mdv
+```
+
 ソースから:
 
 ```
