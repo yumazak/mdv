@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{TITLE}}</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #ffffff;
+    --fg: #1f2328;
+    --muted: #59636e;
+    --border: #d1d9e0;
+    --code-bg: #f6f8fa;
+    --link: #0969da;
+    --quote: #59636e;
+    --error-bg: #ffebe9;
+    --error-border: #ff8182;
+  }
+  [data-theme="dark"] {
+    --bg: #0d1117;
+    --fg: #e6edf3;
+    --muted: #9198a1;
+    --border: #3d444d;
+    --code-bg: #151b23;
+    --link: #4493f8;
+    --quote: #9198a1;
+    --error-bg: #3d1418;
+    --error-border: #f85149;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font: 16px/1.65 ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Hiragino Sans", "Noto Sans JP", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .bar {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 20px;
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .bar .path { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .bar button {
+    margin-left: auto;
+    font: inherit;
+    padding: 3px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+  }
+  .bar button:hover { color: var(--fg); }
+  main { max-width: 920px; margin: 0 auto; padding: 32px 24px 120px; }
+  h1, h2, h3, h4, h5, h6 { line-height: 1.3; margin: 1.6em 0 .6em; scroll-margin-top: 60px; }
+  h1 { font-size: 2em; padding-bottom: .3em; border-bottom: 1px solid var(--border); margin-top: .4em; }
+  h2 { font-size: 1.5em; padding-bottom: .3em; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 1.25em; }
+  p, ul, ol, table, pre, blockquote { margin: 0 0 1em; }
+  a { color: var(--link); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: .9em;
+    background: var(--code-bg);
+    padding: .15em .35em;
+    border-radius: 4px;
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    overflow: auto;
+  }
+  pre code { background: none; padding: 0; font-size: .875em; }
+  blockquote { border-left: 3px solid var(--border); margin-left: 0; padding-left: 1em; color: var(--quote); }
+  table { border-collapse: collapse; display: block; overflow: auto; }
+  th, td { border: 1px solid var(--border); padding: 6px 12px; }
+  th { background: var(--code-bg); }
+  img { max-width: 100%; height: auto; }
+  hr { border: 0; border-top: 1px solid var(--border); margin: 2em 0; }
+  ul.contains-task-list { list-style: none; padding-left: 1em; }
+  .mermaid { margin: 0 0 1.5em; text-align: center; }
+  .mermaid svg { max-width: 100%; height: auto; }
+  .mermaid.error {
+    text-align: left;
+    border: 1px solid var(--error-border);
+    background: var(--error-bg);
+    border-radius: 8px;
+    padding: 12px 16px;
+  }
+  .mermaid.error .error-title { font-weight: 600; font-size: .9em; margin-bottom: 6px; }
+  .mermaid.error .error-msg { font-size: .85em; color: var(--quote); margin-bottom: 10px; }
+  .mermaid.error pre { margin: 0; background: transparent; border: 0; padding: 0; }
+  @media print {
+    .bar { display: none; }
+    main { padding: 0; max-width: none; }
+  }
+</style>
+</head>
+<body>
+<div class="bar">
+  <span class="path" id="path"></span>
+  <button type="button" onclick="location.reload()">再読み込み</button>
+</div>
+<main id="content"></main>
+
+<script src="{{MARKED}}"></script>
+<script src="{{MERMAID}}"></script>
+<script>
+(function () {
+  const MARKDOWN_B64 = {{MD}};
+  const BASE_URL = {{BASE}};
+  const THEME = {{THEME}};
+
+  const bytes = Uint8Array.from(atob(MARKDOWN_B64), c => c.charCodeAt(0));
+  const markdown = new TextDecoder("utf-8").decode(bytes);
+
+  const filePath = decodeURIComponent(new URL(BASE_URL).pathname);
+  document.getElementById("path").textContent = filePath;
+
+  const escapeHtml = s => String(s).replace(/[&<>"']/g,
+    c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+  const sources = [];
+  const defaultRenderer = new marked.Renderer();
+  const defaultCode = defaultRenderer.code.bind(defaultRenderer);
+
+  const renderer = new marked.Renderer();
+  renderer.code = function (token) {
+    const lang = String(token.lang || "").trim().split(/\s+/)[0].toLowerCase();
+    if (lang === "mermaid") {
+      const i = sources.push(token.text) - 1;
+      return '<div class="mermaid" data-index="' + i + '"></div>';
+    }
+    return defaultCode(token);
+  };
+
+  document.head.insertAdjacentHTML("afterbegin", '<base href="' + BASE_URL + '">');
+
+  marked.use({ gfm: true, renderer: renderer });
+  document.getElementById("content").innerHTML = marked.parse(markdown);
+
+  const slugify = s => s.trim().toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/[!"#$%&'()*+,./:;<=>?@\[\\\]^`{|}~]/g, "")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+  const seen = new Map();
+  for (const h of document.querySelectorAll("main h1, main h2, main h3, main h4, main h5, main h6")) {
+    let id = slugify(h.textContent || "");
+    if (!id) continue;
+    const n = (seen.get(id) || 0) + 1;
+    seen.set(id, n);
+    if (n > 1) id = id + "-" + (n - 1);
+    h.id = id;
+  }
+
+  const prefersDark = () => window.matchMedia("(prefers-color-scheme: dark)").matches;
+  const resolved = THEME === "auto" ? (prefersDark() ? "dark" : "light") : THEME;
+  document.documentElement.dataset.theme = resolved;
+
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", e => {
+    if (THEME !== "auto") return;
+    document.documentElement.dataset.theme = e.matches ? "dark" : "light";
+    location.reload();
+  });
+
+  mermaid.initialize({
+    startOnLoad: false,
+    securityLevel: "strict",
+    theme: resolved === "dark" ? "dark" : "default",
+  });
+
+  let seq = 0;
+  (async () => {
+    for (const el of document.querySelectorAll(".mermaid")) {
+      const src = sources[Number(el.dataset.index)];
+      try {
+        await mermaid.parse(src);
+        const { svg } = await mermaid.render("mmd-" + (seq++), src);
+        el.innerHTML = svg;
+      } catch (err) {
+        el.classList.add("error");
+        el.innerHTML =
+          '<div class="error-title">Mermaid error</div>' +
+          '<div class="error-msg">' + escapeHtml(err && err.message ? err.message : err) + "</div>" +
+          "<pre>" + escapeHtml(src) + "</pre>";
+      }
+    }
+    if (location.hash) {
+      const target = document.getElementById(decodeURIComponent(location.hash.slice(1)));
+      if (target) target.scrollIntoView();
+    }
+  })();
+})();
+</script>
+</body>
+</html>
