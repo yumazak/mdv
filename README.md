@@ -14,14 +14,16 @@ mdv notes.md
 ## インストール
 
 ```
-cd ~/dev/personal/mdv && go build -o mdv . && ln -sf ~/dev/personal/mdv/mdv ~/.local/bin/mdv
+mise use -g github:yumazak/mdv
+```
+
+ソースから:
+
+```
+make build && make install
 ```
 
 `vendor/` はバイナリと同じディレクトリに必要。移動する場合は `-vendor` で指定する。
-
-```
-./fetch-vendor.sh
-```
 
 ## フラグ
 
@@ -53,6 +55,20 @@ md --base64--> template.html に埋め込み
 
 vendor は絶対 `file://` URL で参照するので、生成物はキャッシュに置いても動く。
 HTML 自体は小さい（md の base64 のみ）。
+
+## リリース
+
+`v*` タグを push すると GitHub Actions が 4 プラットフォーム分の
+`mdv-<version>-<os>-<arch>.tar.gz`（`mdv` + `vendor/`）を作り、
+checksums.txt と attestation を付けてリリースする。
+
+リポジトリが private の場合、mise から見えるトークンが必要:
+
+```toml
+# ~/.config/mise/config.toml
+[settings.github]
+credential_command = 'gh auth token --hostname "$MISE_CREDENTIAL_HOST"'
+```
 
 ## 既知の制限
 
