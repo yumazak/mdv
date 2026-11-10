@@ -45,7 +45,7 @@ make build && make install
 
 ## 自動更新
 
-ブラウザ側の「再読み込み」ボタンで再生成後の内容を読める。ファイル監視をしたい場合だけ前景で回す。
+ブラウザの再読み込みで再生成後の内容を読める。ファイル監視をしたい場合だけ前景で回す。
 
 ```
 fswatch -o notes.md | xargs -n1 mdv -no-open notes.md
